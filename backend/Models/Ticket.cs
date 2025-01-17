@@ -12,7 +12,7 @@ public class Ticket
     [Required]
     public Guid EmployeeId {  get; set; }
     public Guid RelatedTicketId { get; set; }
-    public DateTime? CreatedDate { get; set; }
+    public DateTime CreatedDate { get; set; }
 
     [Required]
     public string Reason { get; set; } = string.Empty;
