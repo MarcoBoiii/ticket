@@ -1,27 +1,93 @@
 ﻿@page "/"
-@using Services.Dto
+@page "/employee"
+@using BlazorFrontend.API
 @using Models
-
-@using API
 @inject ApiClient ApiClient
 
-<PageTitle>Home</PageTitle>
+<PageTitle>Ticketübersicht</PageTitle>
 
-<button @onclick="GetTicketsAsync">GetTickets</button>
-<span>@ErrorMessage</span>
-
-@foreach (var ticket in GetAllTicketsResponse)
-{
-    <div class="card">
-        <div>UserName: @ticket.Value</div>
-        <div>@ticket.Key.CreatedDate.ToShortDateString()</div>
+<div class="container mt-4">
+    <!-- Header -->
+    <div class="d-flex justify-content-between align-items-center bg-primary text-white p-3 rounded" style="background-color: rgb(82 94 111) !important">
+        <h2 class="mb-0">Mitarbeiteransicht</h2>
+        <button class="btn btn-light" @onclick="ToggleFilter">Filter anzeigen</button>
     </div>
-}
 
+    <!-- Filter -->
+    @if (ShowFilter)
+    {
+        <div class="card mt-3 p-3" style="background-color: #b3bacb6e;">
+            <div class="row">
+                <div class="col-md-4">
+                    <label>Status:</label>
+                    <select class="form-select filter-input" @onchange="(e) => {SelectedStatus = e.Value != null ? e.Value.ToString()! : string.Empty; FilterTickets();}">
+                        <option value="">Alle</option>
+                        <option value="Zugeteilt">Zugeteilt</option>
+                        <option value="Nicht zugeteilt">Nicht zugeteilt</option>
+                        <option value="Warteliste">Warteliste</option>
+                        <option value="Geschlossen">Geschlossen</option>
+                    </select>
+                </div>
+                <div class="col-md-4">
+                    <label>Startdatum:</label>
+                    <input type="date" class="form-control filter-input" @onchange="(e) => {StartDate = DateTime.TryParse(e.Value?.ToString(), out var date) ? (DateTime?)date : null;FilterTickets();}" />
+                </div>
+                <div class="col-md-4">
+                    <label>Enddatum:</label>
+                    <input type="date" class="form-control filter-input" @onchange="(e) => {EndDate = DateTime.TryParse(e.Value?.ToString(), out var date) ? (DateTime?)date : null;FilterTickets();}" />
+                </div>
+            </div>
+        </div>
+    }
 
-@code{
+    <!-- Ticketliste -->
+    <div class="card mt-4 p-3">
+        <div class="ticket-list">
+        @if (FilteredTickets.Any())
+        {
+            @foreach (var ticket in FilteredTickets)
+            {
+                <div class="card mb-3">
+                    <div class="card-header d-flex justify-content-between">
+                        <span>Name:   <strong> @ticket.Value</strong></span>
+                        <span>@ticket.Key.CreatedDate.ToShortDateString()</span>
+                    </div>
+                    <div class="card-body">
+                        <h5 class="card-title">@ticket.Key.Reason</h5>
+                        <p class="card-text">@ticket.Key.Description</p>
+                        <button class="btn btn-success" style="display:flex; justify-self: right;">Zuweisen</button>
+                    </div>
+                </div>
+            }
+        }
+        else
+        {
+            <div class="alert alert-info">Keine Tickets gefunden</div>
+        }
+        </div>
+    </div>
+</div>
+
+@code {
     public Dictionary<Ticket, string> GetAllTicketsResponse { get; set; } = new();
+    public List<KeyValuePair<Ticket, string>> FilteredTickets { get; set; } = new();
+
+    public string SelectedStatus { get; set; } = string.Empty;
+    public bool EnableDateFilter { get; set; } = false;
+    public DateTime? StartDate { get; set; }
+    public DateTime? EndDate { get; set; }
     public string ErrorMessage { get; set; } = string.Empty;
+    public bool ShowFilter { get; set; } = false;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await GetTicketsAsync();
+    }
+
+    public void ToggleFilter()
+    {
+        ShowFilter = !ShowFilter;
+    }
 
     public async Task GetTicketsAsync()
     {
@@ -57,6 +123,40 @@
                 ErrorMessage = error;
             });
             GetAllTicketsResponse.Add(ticket, userName);
+        }
+        FilterTickets();
+    }
+
+    private Status StatusMapping(string statusValue)
+    {
+        return statusValue switch
+        {
+            "Nicht zugeteilt" => Status.Unassigned,
+            "Zugeteilt" => Status.Assigned,
+            "Warteliste" => Status.OnHold,
+            "Geschlossen" => Status.Closed,
+            _ => throw new ArgumentOutOfRangeException(nameof(statusValue), statusValue, "Ungültiger Statuswert.")
+        };
+    }
+
+    public void FilterTickets()
+    {
+        FilteredTickets = GetAllTicketsResponse.ToList();
+
+        if (!string.IsNullOrWhiteSpace(SelectedStatus))
+        {
+            FilteredTickets = FilteredTickets
+            .Where(ticket => ticket.Key.Status == StatusMapping(SelectedStatus)).ToList();
+        }
+
+        if(StartDate is not null)
+        {
+            FilteredTickets = FilteredTickets.Where(ticket => ticket.Key.CreatedDate > StartDate).ToList();
+        }
+
+        if (EndDate is not null)
+        {
+            FilteredTickets = FilteredTickets.Where(ticket => ticket.Key.CreatedDate < EndDate).ToList();
         }
     }
 }
