@@ -23,14 +23,18 @@ builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowSpecificOrigin", policyBuilder =>
     {
-        policyBuilder.AllowAnyHeader()
-            .AllowAnyMethod().AllowAnyOrigin().AllowCredentials();
+        policyBuilder.WithOrigins("https://localhost:7162") 
+            .AllowAnyHeader()
+            .AllowAnyMethod()
+            .AllowCredentials();
     });
 });
+
 
 var app = builder.Build();
 
 app.UseHttpsRedirection();
+app.UseCors("AllowSpecificOrigin");
 
 app.UseAuthorization();
 
