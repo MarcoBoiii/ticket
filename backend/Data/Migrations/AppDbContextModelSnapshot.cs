@@ -23,7 +23,7 @@ namespace Data.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("TEXT");
 
-                    b.Property<DateTime?>("CreatedDate")
+                    b.Property<DateTime>("CreatedDate")
                         .HasColumnType("TEXT");
 
                     b.Property<Guid>("CustomerId")
