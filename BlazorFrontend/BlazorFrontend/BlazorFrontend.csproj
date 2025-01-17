@@ -15,6 +15,9 @@
     <Reference Include="API">
       <HintPath>..\..\backend\API\obj\Debug\net9.0\ref\API.dll</HintPath>
     </Reference>
+    <Reference Include="Models">
+      <HintPath>..\..\backend\API\bin\Debug\net9.0\Models.dll</HintPath>
+    </Reference>
     <Reference Include="Services">
       <HintPath>..\..\backend\API\bin\Debug\net9.0\Services.dll</HintPath>
     </Reference>
