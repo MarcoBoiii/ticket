@@ -31,6 +31,14 @@ public class TicketController : ControllerBase
         return Ok(tickets);
     }
 
+
+    [HttpGet("getAllTicketsById/{id}")]
+    public async Task<IActionResult> GetAllTicketsById(Guid id)
+    {
+        var tickets = await _ticketService.GetAllAsync(id);
+        return Ok(tickets);
+    }
+
     [HttpPost("getAllRelatedTickets")]
     public async Task<IActionResult> GetRelatedTicketTree([FromBody] TicketDto dto)
     {
@@ -48,8 +56,8 @@ public class TicketController : ControllerBase
     [HttpPost("assignTicket")]
     public async Task<IActionResult> AssignTicket([FromBody] TicketDto dto)
     {
-        var ticket = await _ticketService.AssignAsync(dto);
-        return Ok(ticket);
+        await _ticketService.AssignAsync(dto);
+        return Ok();
     }
 
     [HttpPost("createAttachedTicket")]

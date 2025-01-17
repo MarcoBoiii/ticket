@@ -19,6 +19,12 @@ public class UserRepository : IUserRepository
 
     public async Task AddAsync(User user)
     {
+        if(_context.Users.Any(x => x.Email == user.Email))
+        {
+            _logger.LogInformation($"User with Mail: {user.Email} Already Exists");
+            return;
+        }
+
         _context.Add(user);
         _context.SaveChanges();
         _logger.LogInformation($"User with ID: {user.Id} Successfully Created");
@@ -28,7 +34,7 @@ public class UserRepository : IUserRepository
     public async Task<User?> GetUserAsync(string email, string password)
     {
         var user = await _context.Users
-            .FirstOrDefaultAsync(x => x.Email == email && x.Password == password);
+            .FirstOrDefaultAsync(x => x.Email.ToLower() == email.ToLower() && x.Password == password);
 
         if (user is null)
         {
@@ -101,4 +107,17 @@ public class UserRepository : IUserRepository
         return (user.FirstName, user.LastName);
     }
 
+    public async Task<User?> GetUserByEmailAsync(string email)
+    {
+        var user = await _context.Users
+          .FirstOrDefaultAsync(u => u.Email == email);
+
+        if (user == null)
+        {
+            _logger.LogWarning($"User with Mailadress: {email} not found.");
+            return null;
+        }
+
+        return (user);
+    }
 }

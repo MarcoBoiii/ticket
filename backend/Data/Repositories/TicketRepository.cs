@@ -5,6 +5,7 @@ using Models.Interfaces;
 using Services.Dto;
 using Services.Shared;
 using System;
+using System.Net.Sockets;
 
 namespace Data.Repositories;
 
@@ -78,6 +79,21 @@ public class TicketRepository : ITicketRepository
             .Where(x => x.RelatedTicketId == Guid.Empty)
             .OrderByDescending(ticket => ticket.CreatedDate)
             .ToListAsync();
+    }
+
+    public async Task<IEnumerable<Ticket>> GetAllAsync(Guid id)
+    {
+        var allUserTickets = await _context.Tickets
+            .Where(ticket => ticket.CustomerId == id)
+        .ToListAsync();
+
+        if (allUserTickets is null || allUserTickets.Count == 0)
+        {
+            _logger.LogError($"No Ticket for user with id: {id} Found");
+            return [];
+        }
+
+        return allUserTickets;
     }
 
     public async Task<Ticket?> GetByIdAsync(Guid id)

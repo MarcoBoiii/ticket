@@ -1,0 +1,117 @@
+﻿@page "/register"
+@using BlazorFrontend.API
+@using Microsoft.AspNetCore.Components.Forms
+@using Blazored.FluentValidation
+@using Models
+@using Services.Dto
+@using Services.Validation
+
+@inject NavigationManager Navigation
+@inject ApiClient ApiClient
+
+<PageTitle>Registrieren</PageTitle>
+
+<div class="container mt-5">
+    <div class="card shadow-sm p-4 mx-auto" style="max-width: 400px;">
+        <h3 class="text-center">Registrieren</h3>
+
+        <EditForm Model="UserDto" OnValidSubmit="OnValidSubmit">
+            <FluentValidationValidator Validator="Validator" />
+
+            @if (!string.IsNullOrEmpty(RegistrationErrorMessage))
+            {
+                <div class="alert alert-danger text-center" role="alert">
+                    @RegistrationErrorMessage
+                </div>
+            }
+
+            @if (!string.IsNullOrEmpty(RegistrationSuccessMessage))
+            {
+                <div class="alert alert-success text-center" role="alert">
+                    @RegistrationSuccessMessage
+                </div>
+            }
+
+            <div class="mb-3">
+                <label class="form-label">Vorname</label>
+                <InputText class="form-control" @bind-Value="UserDto.FirstName" />
+                <ValidationMessage For="() => UserDto.FirstName" />
+            </div>
+
+            <div class="mb-3">
+                <label class="form-label">Nachname</label>
+                <InputText class="form-control" @bind-Value="UserDto.LastName" />
+                <ValidationMessage For="() => UserDto.LastName" />
+            </div>
+
+            <div class="mb-3">
+                <label class="form-label">Email</label>
+                <InputText class="form-control" @bind-Value="UserDto.Email" />
+                <ValidationMessage For="() => UserDto.Email" />
+            </div>
+
+            <div class="mb-3">
+                <label class="form-label">Passwort</label>
+                <InputText type="password" class="form-control" @bind-Value="UserDto.Password" />
+                <ValidationMessage For="() => UserDto.Password" />
+            </div>
+
+            <div class="mb-3">
+                <label class="form-label">Passwort bestätigen</label>
+                <InputText type="password" class="form-control" @bind-Value="UserDto.ConfirmPassword" />
+                <ValidationMessage For="() => UserDto.ConfirmPassword" />
+            </div>
+
+            <button type="submit" class="btn btn-success w-100">Registrieren</button>
+        </EditForm>
+
+        <div class="text-center mt-3">
+            <button class="btn btn-link" @onclick="NavigateToLogin">Bereits ein Konto? Anmelden</button>
+        </div>
+    </div>
+</div>
+
+@code {
+    private UserDto UserDto = new();
+    private UserDtoRegisterValidator Validator { get; set; } = new();
+    private string RegistrationErrorMessage { get; set; } = string.Empty;
+    private string RegistrationSuccessMessage { get; set; } = string.Empty;
+
+
+    private async Task OnValidSubmit()
+    {
+        var result = await TryRegisterUserAsync(UserDto);
+
+        if (result)
+        {
+            RegistrationSuccessMessage = "Erfolgreich Registriert";
+            StateHasChanged();
+            await Task.Delay(2000);
+            Navigation.NavigateTo("/login");
+        }
+    }
+
+    public async Task<bool> TryRegisterUserAsync(UserDto user)
+    {
+        bool isSuccess = false;
+        await ApiClient.PostQueryAsync<UserDto, object>(
+            ApiClient.USER_API_ADRESS,
+            "createUser",
+            user,
+            async response =>
+            {
+                isSuccess = true;
+                await Task.CompletedTask;
+            },
+            error =>
+            {
+                RegistrationErrorMessage = error;
+            });
+        return isSuccess;
+    }
+
+    private void NavigateToLogin()
+    {
+        Navigation.NavigateTo("/login");
+    }
+}

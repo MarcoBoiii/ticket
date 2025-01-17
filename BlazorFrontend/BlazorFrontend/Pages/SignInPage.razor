@@ -1,0 +1,123 @@
+﻿@page "/"
+@page "/login"
+@using BlazorFrontend.API
+@using Microsoft.AspNetCore.Components.Forms
+@using Blazored.FluentValidation
+@using Models
+@using Services.Dto
+@using Services.Validation;
+
+@inject NavigationManager Navigation
+@inject ApiClient ApiClient
+
+<PageTitle>Login</PageTitle>
+
+<div class="container mt-5">
+    <div class="card shadow-sm p-4 mx-auto" style="max-width: 400px;">
+        <h3 class="text-center">Anmelden</h3>
+
+        <EditForm Model="UserDto" OnValidSubmit="OnValidSubmit">
+            <FluentValidationValidator Validator="Validator" />
+
+            @if (!string.IsNullOrEmpty(LoginErrorMessage))
+            {
+                <div class="alert alert-danger text-center" role="alert">
+                    @LoginErrorMessage
+                </div>
+            }
+
+            <div class="mb-3">
+                <label class="form-label">Email</label>
+                <InputText class="form-control" @bind-Value="UserDto.Email" />
+                <ValidationMessage For="() => UserDto.Email"/>
+            </div>
+
+            <div class="mb-3">
+                <label class="form-label">Passwort</label>
+                <InputText type="password" class="form-control" @bind-Value="UserDto.Password" />
+                <ValidationMessage For="() => UserDto.Password" />
+            </div>
+
+            <button type="submit" class="btn btn-primary w-100">Anmelden</button>
+        </EditForm>
+
+        <div class="text-center mt-3">
+            <button class="btn btn-link" @onclick="NavigateToRegister">Registrieren</button>
+        </div>
+    </div>
+</div>
+
+@code {
+    private UserDto UserDto = new();
+    private User User = new();
+    private string ErrorMessage { get; set; } = string.Empty;
+    private string LoginErrorMessage { get; set; } = string.Empty;
+    private UserDtoLoginValidator Validator {get;set;} = new();
+
+
+    private async Task OnValidSubmit()
+    {
+        var result = await TryLogInUserAsync(UserDto);
+
+        if(!result)
+        {
+            LoginErrorMessage = "Passwort oder Email falsch";
+            return;
+        }
+        else
+        {
+            if(User.IsEmployee)
+            {
+                Navigation.NavigateTo($"/employee/{User.Id}/ticketView");
+            }
+            else
+            {
+                Navigation.NavigateTo($"/customer/{User.Id}/ticketView");
+            }
+        }
+    }
+
+    public async Task<bool> TryLogInUserAsync(UserDto user)
+    {
+        var userId = Guid.Empty;
+        await ApiClient.PostQueryAsync<UserDto, Guid>(
+            ApiClient.USER_API_ADRESS,
+            $"logInUser",
+            user,
+            async response =>
+            {
+                userId = response;
+                await Task.CompletedTask;
+            },
+            error =>
+            {
+                ErrorMessage = error;
+            });
+
+        if(userId == Guid.Empty)
+        {
+            return false;
+        }
+        else
+        {
+            await ApiClient.GetQueryAsync<User>(
+            ApiClient.USER_API_ADRESS,
+            $"getUser/{userId}",
+            async response =>
+            {
+                User = response;
+                await Task.CompletedTask;
+            },
+            error =>
+            {
+                ErrorMessage = error;
+            });
+            return true;
+        }
+    }
+
+    private void NavigateToRegister()
+    {
+        Navigation.NavigateTo("/register");
+    }
+}

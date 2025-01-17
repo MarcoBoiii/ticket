@@ -76,6 +76,57 @@ public class ApiClient
             onError($"Exception: {ex.Message}");
         }
     }
+    public async Task PostQueryAsync<TRequest, TResponse>(
+        string baseUrl,
+        string endpoint,
+        TRequest requestData,
+        Func<TResponse, Task> onSuccess,
+        Action<string> onError)
+    {
+        try
+        {
+            var url = $"{httpClient.BaseAddress}{baseUrl}/{endpoint}";
+            var response = await httpClient.PostAsJsonAsync(url, requestData);
+
+            if (response.IsSuccessStatusCode)
+            {
+                var jsonString = await response.Content.ReadAsStringAsync();
+
+                if (string.IsNullOrEmpty(jsonString))
+                {
+                    await onSuccess(default!);
+                }
+                else
+                {
+                    try
+                    {
+                        var data = JsonSerializer.Deserialize<TResponse>(jsonString);
+                        if (data != null)
+                        {
+                            await onSuccess(data);
+                        }
+                        else
+                        {
+                            throw new ArgumentException("Die angeforderten Daten konnten nicht deserialisiert werden.");
+                        }
+                    }
+                    catch (JsonException jsonEx)
+                    {
+                        onError($"JSON-Fehler: {jsonEx.Message}");
+                    }
+                }
+            }
+            else
+            {
+                var errorContent = await response.Content.ReadAsStringAsync();
+                onError($"Fehler: {errorContent}");
+            }
+        }
+        catch (Exception ex)
+        {
+            onError($"Exception: {ex.Message}");
+        }
+    }
 
 }
 

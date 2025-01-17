@@ -35,9 +35,9 @@ public class UserService
         await _userRepository.DeleteAsync(userId);
     }
 
-    public async Task GetUserById(Guid userId)
+    public async Task<User?> GetUserById(Guid userId)
     {
-        await _userRepository.GetByIdAsync(userId);
+        return await _userRepository.GetByIdAsync(userId);
     }
 
     public async Task UpdateUser(UserDto dto)
@@ -55,5 +55,10 @@ public class UserService
     public async Task<(string FirstName, string LastName)?> GetUserNameById(Guid id)
     {
         return await _userRepository.GetUserNameByIdAsync(id);
+    }
+
+    public async Task<User?> GetUserByEmailAsync(string email)
+    {
+        return await _userRepository.GetUserByEmailAsync(email);
     }
 }

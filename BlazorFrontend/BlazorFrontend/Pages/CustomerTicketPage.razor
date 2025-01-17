@@ -1,0 +1,194 @@
+﻿@page "/customer/{id:guid}/ticketView"
+@using BlazorFrontend.API
+@using Models
+@using Services.Dto
+@inject ApiClient ApiClient
+@inject NavigationManager Navigation
+
+<PageTitle>Ticketübersicht - Kunde</PageTitle>
+
+<div class="container mt-4">
+    <!-- Header -->
+    <div class="d-flex justify-content-between align-items-center bg-primary text-white p-3 rounded" style="background-color: rgb(82 94 111) !important">
+        <h2 class="mb-0">Ticketübersicht - @CustomerName</h2>
+        <button class="btn btn-light" @onclick="NavigateToCreateTicket">Ticket erstellen</button>
+    </div>
+
+    <!-- Ticketliste -->
+    <div class="card mt-4 p-3">
+        <div class="ticket-list">
+            @if (FilteredTickets.Any())
+            {
+                @foreach (var ticket in FilteredTickets)
+                {
+                    <div class="card mb-3">
+                        <div class="card-header d-flex justify-content-between">
+                            <span>Name: <strong>@ticket.Value</strong></span>
+                            <span>@ticket.Key.CreatedDate.ToShortDateString()</span>
+                        </div>
+                        <div class="card-body">
+                            <h5 class="card-title">@ticket.Key.Reason</h5>
+                            <p class="card-text">@ticket.Key.Description</p>
+
+                            @if (ticket.Key.EmployeeId == Guid.Empty)
+                            {
+                                <!-- Bearbeiten Button, wenn kein Mitarbeiter zugewiesen -->
+                                <button class="btn btn-warning" @onclick="() => EditTicket(ticket.Key.Id)">Bearbeiten</button>
+                            }
+
+                            @if (ticket.Key.Response != null)
+                            {
+                                <!-- Anzeige der Antwort -->
+                                <div class="mt-2">
+                                    <strong>Antwort: </strong><p>@ticket.Key.Response</p>
+                                </div>
+                            }
+
+                            <!-- Verwandtes Ticket erstellen -->
+                            <button class="btn btn-info mt-2" @onclick="() => CreateRelatedTicket(ticket.Key.Id)">Verwandtes Ticket erstellen</button>
+
+                            <!-- Verwandte Tickets anzeigen -->
+                            <button class="btn btn-secondary mt-2" @onclick="() => ToggleRelatedTickets(ticket.Key.Id)">Verwandte Tickets anzeigen</button>
+
+                            <!-- Verwandte Tickets anzeigen, wenn Toggle aktiviert -->
+                            @if (relatedTicketsVisible.Contains(ticket.Key.Id))
+                            {
+                                <div class="related-tickets mt-3">
+                                    <h6>Verwandte Tickets:</h6>
+                                    @foreach (var relatedTicket in GetRelatedTickets(ticket.Key.Id))
+                                    {
+                                        <div class="card mt-2">
+                                            <div class="card-body">
+                                                <p><strong>Grund:</strong> @relatedTicket.Reason</p>
+                                                <p>@relatedTicket.Description</p>
+                                            </div>
+                                        </div>
+                                    }
+                                </div>
+                            }
+                        </div>
+                    </div>
+                }
+            }
+            else
+            {
+                <div class="alert alert-info">Keine Tickets gefunden</div>
+            }
+        </div>
+    </div>
+
+</div>
+
+@code {
+    [Parameter]
+    public Guid Id { get; set; }
+
+    public Dictionary<Ticket, string> GetAllTicketsResponse { get; set; } = new();
+    public List<KeyValuePair<Ticket, string>> FilteredTickets { get; set; } = new();
+    public List<Guid> relatedTicketsVisible { get; set; } = new();
+    private string CustomerName { get; set; } = string.Empty;
+
+
+    public string ErrorMessage { get; set; } = string.Empty;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await GetCustomerNameQuery();
+        await GetTicketsAsync();
+    }
+
+    private async Task GetCustomerNameQuery()
+    {
+        await ApiClient.GetQueryAsync<User>(
+            ApiClient.USER_API_ADRESS,
+            $"getUserName/{Id}",
+            async response =>
+            {
+                CustomerName = $"{response.FirstName}, {response.LastName}";
+                await Task.CompletedTask;
+            },
+            error =>
+            {
+                ErrorMessage = error;
+            });
+    }
+
+    public async Task GetTicketsAsync()
+    {
+        GetAllTicketsResponse = new();
+        var tickets = new List<Ticket>();
+        string userName = string.Empty;
+
+        await ApiClient.GetListQueryAsync<Ticket>(
+            ApiClient.TICKET_API_ADRESS,
+            $"getAllTicketsById/{Id}",
+            async response =>
+            {
+                tickets = response.ToList();
+                await Task.CompletedTask;
+            },
+            error =>
+            {
+                ErrorMessage = error;
+            });
+
+        foreach (var ticket in tickets)
+        {
+            await ApiClient.GetQueryAsync<User>(
+            ApiClient.USER_API_ADRESS,
+            $"getUserName/{ticket.CustomerId}",
+            async response =>
+            {
+                userName = $"{response.FirstName}, {response.LastName}";
+                await Task.CompletedTask;
+            },
+            error =>
+            {
+                ErrorMessage = error;
+            });
+            GetAllTicketsResponse.Add(ticket, userName);
+        }
+    }
+
+    private async Task EditTicket(Guid ticketId)
+    {
+        // Navigiere zur Bearbeitungsseite des Tickets
+        Navigation.NavigateTo($"/customer/{Id}/editTicket/{ticketId}");
+    }
+
+    private async Task CreateRelatedTicket(Guid ticketId)
+    {
+        // Erstelle ein verwandtes Ticket
+        Navigation.NavigateTo($"/customer/{Id}/createRelatedTicket/{ticketId}");
+    }
+
+    private void NavigateToCreateTicket()
+    {
+        // Navigiere zur Seite, um ein neues Ticket zu erstellen
+        Navigation.NavigateTo($"/customer/{Id}/createTicket");
+    }
+
+    private void ToggleRelatedTickets(Guid ticketId)
+    {
+        // Toggle-Logik, um verwandte Tickets anzuzeigen oder auszublenden
+        if (relatedTicketsVisible.Contains(ticketId))
+        {
+            relatedTicketsVisible.Remove(ticketId);
+        }
+        else
+        {
+            relatedTicketsVisible.Add(ticketId);
+        }
+    }
+
+    private List<Ticket> GetRelatedTickets(Guid ticketId)
+    {
+        // Hier können Sie die Logik anpassen, um die verwandten Tickets vom Backend abzurufen
+        // Zum Beispiel könnte es einen API-Endpunkt geben, der alle verwandten Tickets für eine bestimmte Ticket-ID zurückgibt
+        var relatedTickets = GetAllTicketsResponse
+            .Where(ticket => ticket.Key.RelatedTicketId == ticketId)
+            .Select(ticket => ticket.Key)
+            .ToList();
+        return relatedTickets;
+    }
+}

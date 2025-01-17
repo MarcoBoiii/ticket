@@ -1,7 +1,7 @@
-﻿@page "/"
-@page "/employee"
+﻿@page "/employee/{id:guid}/ticketView"
 @using BlazorFrontend.API
 @using Models
+@using Services.Dto
 @inject ApiClient ApiClient
 
 <PageTitle>Ticketübersicht</PageTitle>
@@ -9,7 +9,7 @@
 <div class="container mt-4">
     <!-- Header -->
     <div class="d-flex justify-content-between align-items-center bg-primary text-white p-3 rounded" style="background-color: rgb(82 94 111) !important">
-        <h2 class="mb-0">Mitarbeiteransicht</h2>
+        <h2 class="mb-0">Ticketübersicht - @EmployeeName</h2>
         <button class="btn btn-light" @onclick="ToggleFilter">Filter anzeigen</button>
     </div>
 
@@ -43,53 +43,126 @@
     <!-- Ticketliste -->
     <div class="card mt-4 p-3">
         <div class="ticket-list">
-        @if (FilteredTickets.Any())
-        {
-            @foreach (var ticket in FilteredTickets)
+            @if (FilteredTickets.Any())
             {
-                <div class="card mb-3">
-                    <div class="card-header d-flex justify-content-between">
-                        <span>Name:   <strong> @ticket.Value</strong></span>
-                        <span>@ticket.Key.CreatedDate.ToShortDateString()</span>
+                @foreach (var ticket in FilteredTickets)
+                {
+                    <div class="card mb-3">
+                        <div class="card-header d-flex justify-content-between">
+                            <span>Name:   <strong> @ticket.Value</strong></span>
+                            <span>@ticket.Key.CreatedDate.ToShortDateString()</span>
+                        </div>
+                        <div class="card-body">
+                            <h5 class="card-title">@ticket.Key.Reason</h5>
+                            <p class="card-text">@ticket.Key.Description</p>
+                            @if(ticket.Key.EmployeeId == Id)
+                            {
+                                <div class="d-flex justify-content-end">
+                                    <button class="btn btn-primary mr-2" @onclick="() => AnswerTicket(ticket.Key.Id)">Antworten</button>
+                                    <button class="btn btn-warning mr-2" @onclick="() => AddToWaitlist(ticket.Key.Id)">Auf Warteliste</button>
+                                    <button class="btn btn-danger" @onclick="() => CloseTicket(ticket.Key.Id)">Schließen</button>
+                                </div>
+                            }
+                            else
+                            {
+                                <button class="btn btn-success" style="display:flex; justify-self: right;" @onclick=" () => AssignTicket(ticket.Key.Id)">Zuweisen</button>    
+                            }
+                        </div>
                     </div>
-                    <div class="card-body">
-                        <h5 class="card-title">@ticket.Key.Reason</h5>
-                        <p class="card-text">@ticket.Key.Description</p>
-                        <button class="btn btn-success" style="display:flex; justify-self: right;">Zuweisen</button>
-                    </div>
-                </div>
+                }
             }
-        }
-        else
-        {
-            <div class="alert alert-info">Keine Tickets gefunden</div>
-        }
+            else
+            {
+                <div class="alert alert-info">Keine Tickets gefunden</div>
+            }
         </div>
     </div>
 </div>
 
 @code {
-    public Dictionary<Ticket, string> GetAllTicketsResponse { get; set; } = new();
-    public List<KeyValuePair<Ticket, string>> FilteredTickets { get; set; } = new();
+    [Parameter]
+    public Guid Id { get; set; }
 
-    public string SelectedStatus { get; set; } = string.Empty;
-    public bool EnableDateFilter { get; set; } = false;
-    public DateTime? StartDate { get; set; }
-    public DateTime? EndDate { get; set; }
-    public string ErrorMessage { get; set; } = string.Empty;
-    public bool ShowFilter { get; set; } = false;
+    private Dictionary<Ticket, string> GetAllTicketsResponse { get; set; } = new();
+    private List<KeyValuePair<Ticket, string>> FilteredTickets { get; set; } = new();
+
+    private string EmployeeName { get; set; } = string.Empty;
+    private string SelectedStatus { get; set; } = string.Empty;
+    private bool EnableDateFilter { get; set; } = false;
+    private DateTime? StartDate { get; set; }
+    private DateTime? EndDate { get; set; }
+    private string ErrorMessage { get; set; } = string.Empty;
+    private bool ShowFilter { get; set; } = false;
 
     protected override async Task OnInitializedAsync()
     {
+        await GetEmployeeNameQuery();
         await GetTicketsAsync();
     }
 
-    public void ToggleFilter()
+    private async Task CloseTicket(Guid ticketId)
+    {
+
+    }
+
+    private async Task AddToWaitlist(Guid ticketId)
+    {
+
+    }
+
+
+    private async Task AnswerTicket(Guid ticketId)
+    {
+
+    }
+
+    private async Task GetEmployeeNameQuery()
+    {
+        await ApiClient.GetQueryAsync<User>(
+            ApiClient.USER_API_ADRESS,
+            $"getUserName/{Id}",
+            async response =>
+            {
+                EmployeeName = $"{response.FirstName}, {response.LastName}";
+                await Task.CompletedTask;
+            },
+            error =>
+            {
+                ErrorMessage = error;
+            });
+    }
+
+    private async Task AssignTicket(Guid ticketId)
+    {
+        var ticketDto = new TicketDto()
+            {
+                EmployeeId = Id,
+                Id = ticketId,
+            };
+
+        await ApiClient.PostQueryAsync<TicketDto, object>(
+        ApiClient.USER_API_ADRESS,
+            $"assignTicket",
+            ticketDto,
+            async response =>
+            {
+                await Task.CompletedTask;
+            },
+            error =>
+            {
+                ErrorMessage = error;
+            });
+
+        await GetTicketsAsync();
+
+    }
+
+    private void ToggleFilter()
     {
         ShowFilter = !ShowFilter;
     }
 
-    public async Task GetTicketsAsync()
+    private async Task GetTicketsAsync()
     {
         GetAllTicketsResponse = new();
         var tickets = new List<Ticket>();
@@ -139,7 +212,7 @@
         };
     }
 
-    public void FilterTickets()
+    private void FilterTickets()
     {
         FilteredTickets = GetAllTicketsResponse.ToList();
 

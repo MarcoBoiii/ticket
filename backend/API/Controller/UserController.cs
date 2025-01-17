@@ -1,4 +1,5 @@
 ﻿using Microsoft.AspNetCore.Mvc;
+using Models;
 using Services;
 using Services.Dto;
 using System.Runtime.CompilerServices;
@@ -18,8 +19,22 @@ public class UserController : ControllerBase
     [HttpPost("createUser")]
     public async Task<IActionResult> CreateUser([FromBody] UserDto dto)
     {
+
+        var existingUser = await _userService.GetUserByEmailAsync(dto.Email);
+        if (existingUser != null)
+        {
+            return Conflict("Ein Benutzer mit dieser E-Mail-Adresse existiert bereits.");
+        }
+
         await _userService.CreateUser(dto);
         return Ok();
+    }
+
+    [HttpPost("getUserByEmail")]
+    public async Task<IActionResult> GetUserByEmailAsync([FromBody] UserDto dto)
+    {
+        var result = await _userService.GetUserByEmailAsync(dto.Email);
+        return Ok(result);
     }
 
     [HttpPost("logInUser")]
@@ -49,8 +64,8 @@ public class UserController : ControllerBase
     [HttpGet("getUser/{id}")]
     public async Task<IActionResult> GetUser(Guid id)
     {
-        await _userService.GetUserById(id);
-        return Ok();
+        var result = await _userService.GetUserById(id);
+        return Ok(result);
     }
 
     [HttpGet("getUserName/{id}")]
